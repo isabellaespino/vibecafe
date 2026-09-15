@@ -1,3 +1,4 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +9,7 @@
     <h1>Menu</h1>
     <ul>
         {% for product in products %}
-        <li>{{ product.name }} &mdash; ${{ product.price }}</li>
+        <li><a href="{% url 'product_detail' product.pk %}">{{ product.name }}</a> &mdash; ₱{{ product.price|intcomma }}</li>
         {% empty %}
         <li>No products yet.</li>
         {% endfor %}
