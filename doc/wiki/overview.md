@@ -36,6 +36,10 @@ python3 -m venv .venv
 - `cart/` — owns `CartItem`, the add-to-cart view, and the cart page view,
   each behind `@login_required`. Its own `urls.py`, included from
   `vibecafe/urls.py`.
+- `orders/` — owns `Order`/`OrderItem`, the checkout view, and the order
+  history view, each behind `@login_required`. Depends on `cart` (checkout
+  reads `CartItem` rows); `cart` doesn't depend on `orders`. Its own
+  `urls.py`, included from `vibecafe/urls.py`.
 - `templates/registration/login.html` — the customer-facing login page's
   template. Project-level (not inside any app) because login isn't tied to
   any one app's data model; `vibecafe/settings.py` adds `BASE_DIR /
@@ -72,8 +76,37 @@ instead of insertion order.
 a stored column — same "compute on read, don't let it drift" reasoning as
 the original feasibility study applied to order totals.
 
-There is no `Order` or `OrderItem` yet — checkout and order history are
-still deferred.
+### `Order` / `OrderItem` (`orders/models.py`)
+
+| model | field | type |
+|---|---|---|
+| `Order` | `user` | `ForeignKey(User, on_delete=CASCADE)` |
+| `Order` | `created_at` | `DateTimeField(auto_now_add=True)` |
+| `OrderItem` | `order` | `ForeignKey(Order, related_name="items", on_delete=CASCADE)` |
+| `OrderItem` | `product` | `ForeignKey(Product, on_delete=PROTECT)` |
+| `OrderItem` | `product_name` | `CharField(max_length=200)` |
+| `OrderItem` | `unit_price` | `DecimalField(max_digits=6, decimal_places=2)` |
+| `OrderItem` | `quantity` | `PositiveIntegerField` |
+
+`product_name` and `unit_price` are a **snapshot** taken at checkout time,
+copied from `Product.name`/`Product.price`. The order history page always
+renders from these fields, never from `product.name`/`product.price` —
+that's what makes a later price edit not rewrite past orders. Verified
+directly: changing `Product.price` after an order exists leaves the
+order's `unit_price` unchanged.
+
+`OrderItem.product` uses `on_delete=PROTECT`, unlike `CartItem.product`'s
+`CASCADE` — a product that's ever been ordered can't be deleted from
+`/admin/` (raises `ProtectedError`, verified). Since `Product` has no
+`is_active` flag, there's currently no way to retire a product once it has
+order history; it just has to stay in the catalog. Reintroducing
+`is_active` would fix this but hasn't been needed yet.
+
+No stored `Order.total` — computed via `annotate(total=Sum(F("items__quantity")
+* F("items__unit_price")))` on the order queryset, same "compute on read"
+reasoning as `CartItem.subtotal`, and subject to the same SQLite aggregate
+formatting quirk described below (needs `floatformat:2` before
+`intcomma`).
 
 ## Currency display
 
@@ -140,20 +173,25 @@ documented behavior (`doc/study/1789454197-cart.md` §5.3), not a bug.
 | `/product/<id>/` | `products.views.ProductDetailView` | public | one product's name and price, plus an add-to-cart form (quantity, POST to `/cart/add/<id>/`). 404s on an unknown id. |
 | `/cart/` | `cart.views.CartView` | required | lists the logged-in user's `CartItem` rows: product, quantity, peso subtotal, and a cart total. |
 | `/cart/add/<product_id>/` | `cart.views.add_to_cart` | required | POST only. Valid quantity → creates or increments the `CartItem`, redirects to `/cart/`. Invalid quantity → redirects back to the product page with an error message (`django.contrib.messages`). |
+| `/checkout/` | `orders.views.checkout` | required | POST only. Empty cart → no-op redirect to `/cart/`. Otherwise, atomically creates an `Order` + snapshotted `OrderItem` rows and empties the cart, then redirects to `/orders/`. |
+| `/orders/` | `orders.views.OrderHistoryView` | required | lists the logged-in user's past orders, newest first, each with its line items and total. No separate per-order detail URL — this one page covers "orders with their items and totals." |
 | `/accounts/login/` | `django.contrib.auth.views.LoginView` | public | customer-facing login; `?next=` sends the user back where they came from. |
 | `/admin/` | Django admin site | staff (`is_staff=True`) | `Product` CRUD lives here. |
 
 ## What's deliberately not here yet
 
-Per `doc/plan/1789451642-mvp-product-homepage.md`,
-`doc/plan/1789452692-product-detail-and-peso-currency.md`, and
-`doc/plan/1789454236-cart.md`, this pass stopped at a product catalog,
-homepage, detail page, and cart. Not built:
+The full original feature set — catalog, cart, checkout, order history —
+is now built (see `doc/plan/` for each pass). Still not built:
 
 - Removing or editing a cart item's quantity after it's been added
-- Checkout, `Order`/`OrderItem`, order history
+- A separate `/orders/<id>/` detail URL (deliberate — see the `orders`
+  row in the URL table above)
+- Editing or cancelling a placed order, order status workflow, tax/service
+  charge line
 - Logout, password reset/change, self-registration
-- `description` or `is_active` fields on `Product`
+- `description` or `is_active` fields on `Product` (the latter would also
+  unblock retiring a product that has order history — see the
+  `OrderItem.product` note above)
 - Any shared base template or site nav (each page is still a standalone
   `<html>` document)
 - Automated tests (none exist yet — add tests when there's behavior worth
