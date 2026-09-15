@@ -13,3 +13,4 @@ Work in this loop. Never skip a step.
 - Scope every change to one conventional commit (feat: fix: chore: build:).
 - Stack: Django, SQLite, Django built-in auth and admin, server-rendered templates. No frontend framework.
 - Do not add dependencies without saying why in a study first.
+- Never reset or reseed `db.sqlite3` (no `rm db.sqlite3`, no `Model.objects.all().delete()` against it, no blind `migrate` used as a reset). It's a local, gitignored file — the only copy of whatever data is in it, including anything added through the admin. To verify behavior, use Django's test framework (`manage.py test`, which runs against its own throwaway test database) or a separate throwaway SQLite file, never the working `db.sqlite3`.
