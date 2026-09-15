@@ -11,7 +11,7 @@ page describes what's actually built, kept in sync with `main`.
 
 - Django 5.2 (`requirements.txt`)
 - SQLite (`db.sqlite3`, gitignored — each environment has its own)
-- Django's built-in `auth` and `admin` apps
+- Django's built-in `auth`, `admin`, and `humanize` apps
 - Server-rendered templates, no JS framework
 
 ## Running it locally
@@ -31,8 +31,8 @@ python3 -m venv .venv
 
 - `vibecafe/` — Django project package (settings, root URLconf, WSGI/ASGI).
 - `products/` — the one app so far. Owns the `Product` model, its admin
-  registration, the homepage view, and its own `urls.py` (included at the
-  site root from `vibecafe/urls.py`).
+  registration, the list and detail views, and its own `urls.py` (included
+  at the site root from `vibecafe/urls.py`).
 
 ## Data model
 
@@ -50,6 +50,15 @@ detail page or order history actually needs them (see
 
 No other models exist yet. There is no `CartItem`, `Order`, or `OrderItem`.
 
+## Currency display
+
+Prices are Philippine pesos. There's no currency field on `Product` — `price`
+is a plain `DecimalField`; currency is purely a template-rendering concern.
+Every template that shows a price does `₱{{ product.price|intcomma }}`
+(`intcomma`, from `django.contrib.humanize`, adds thousands separators, e.g.
+`₱1,234.50`). If a new page ever renders a price, follow the same pattern —
+don't hardcode `$` or skip `intcomma`.
+
 ## Admin
 
 `Product` is registered in `products/admin.py` with `list_display = ("name",
@@ -66,20 +75,24 @@ Django's admin does not email a set-password link.
 
 | path | view | auth | notes |
 |---|---|---|---|
-| `/` | `products.views.ProductListView` | public | lists every `Product`, ordered by name, as `{{ product.name }}` / `${{ product.price }}`. Renders "No products yet." when empty. |
+| `/` | `products.views.ProductListView` | public | lists every `Product`, ordered by name; each name links to its detail page. Renders "No products yet." when empty. |
+| `/product/<id>/` | `products.views.ProductDetailView` | public | one product's name and price. 404s on an unknown id (Django's default `DetailView` behavior). |
 | `/admin/` | Django admin site | staff (`is_staff=True`) | `Product` CRUD lives here. |
 
 ## What's deliberately not here yet
 
-Per `doc/plan/1789451642-mvp-product-homepage.md`, this pass stopped at a
-product catalog and homepage. Not built:
+Per `doc/plan/1789451642-mvp-product-homepage.md` and
+`doc/plan/1789452692-product-detail-and-peso-currency.md`, this pass stopped
+at a product catalog, homepage, and detail page. Not built:
 
 - Cart (`CartItem`), checkout, or `Order`/`OrderItem` history
 - Customer-facing login/logout pages (only the admin login at
   `/admin/login/` exists, via `django.contrib.admin`)
-- Product detail pages
-- Automated tests (none exist yet — the app is one read-only list view
-  over one model; add tests when there's behavior worth covering)
+- `description` or `is_active` fields on `Product`
+- Any shared base template or site nav (still just two pages, each a
+  standalone `<html>` document)
+- Automated tests (none exist yet — the app is two read-only views over one
+  model; add tests when there's behavior worth covering)
 
 When any of the above gets built, update this page's URL table and data
 model section to match.
