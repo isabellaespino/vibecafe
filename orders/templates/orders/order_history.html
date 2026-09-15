@@ -1,0 +1,24 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Your orders &mdash; Vibecafe</title>
+</head>
+<body>
+    <h1>Your orders</h1>
+    {% for order in orders %}
+    <section>
+        <h2>Order #{{ order.pk }} &mdash; {{ order.created_at }}</h2>
+        <ul>
+            {% for item in order.items.all %}
+            <li>{{ item.product_name }} &times; {{ item.quantity }} &mdash; ₱{{ item.unit_price|intcomma }} each</li>
+            {% endfor %}
+        </ul>
+        <p>Total: ₱{{ order.total|floatformat:2|intcomma }}</p>
+    </section>
+    {% empty %}
+    <p>You haven't placed any orders yet.</p>
+    {% endfor %}
+</body>
+</html>

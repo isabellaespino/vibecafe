@@ -16,6 +16,10 @@
     </ul>
     {% if items %}
     <p>Total: ₱{{ total|floatformat:2|intcomma }}</p>
+    <form method="post" action="{% url 'checkout' %}">
+        {% csrf_token %}
+        <button type="submit">Check out</button>
+    </form>
     {% endif %}
 </body>
 </html>
