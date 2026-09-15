@@ -8,5 +8,18 @@
 <body>
     <h1>{{ product.name }}</h1>
     <p>₱{{ product.price|intcomma }}</p>
+    {% if messages %}
+    <ul>
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" action="{% url 'add_to_cart' product.pk %}">
+        {% csrf_token %}
+        <label for="id_quantity">Quantity</label>
+        <input type="number" name="quantity" id="id_quantity" min="1" value="1">
+        <button type="submit">Add to cart</button>
+    </form>
 </body>
 </html>
