@@ -1,4 +1,4 @@
-from django.views.generic import ListView
+from django.views.generic import DetailView, ListView
 
 from .models import Product
 
@@ -9,3 +9,7 @@ class ProductListView(ListView):
 
     def get_queryset(self):
         return Product.objects.order_by("name")
+
+
+class ProductDetailView(DetailView):
+    model = Product

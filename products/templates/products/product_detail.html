@@ -1,0 +1,12 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ product.name }} &mdash; Vibecafe</title>
+</head>
+<body>
+    <h1>{{ product.name }}</h1>
+    <p>₱{{ product.price|intcomma }}</p>
+</body>
+</html>
