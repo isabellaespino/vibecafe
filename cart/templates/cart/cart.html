@@ -1,0 +1,21 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Your cart &mdash; Vibecafe</title>
+</head>
+<body>
+    <h1>Your cart</h1>
+    <ul>
+        {% for item in items %}
+        <li>{{ item.product.name }} &times; {{ item.quantity }} &mdash; ₱{{ item.subtotal|intcomma }}</li>
+        {% empty %}
+        <li>Your cart is empty.</li>
+        {% endfor %}
+    </ul>
+    {% if items %}
+    <p>Total: ₱{{ total|floatformat:2|intcomma }}</p>
+    {% endif %}
+</body>
+</html>
